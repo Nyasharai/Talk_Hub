@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #64b3f7;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        h1 {
+            color: #4a4a4a;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        #login {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #username {
+            padding: 10px;
+            font-size: 1em;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 300px;
+            box-sizing: border-box;
+        }
+
+        #loginBtn {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        #loginBtn:hover {
+            background-color: #0056b3;
+        }
+
+        #chat {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        #messages {
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+        }
+
+        .username {
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        #typing-indicator {
+            font-style: italic;
+            color: #888;
+            margin-bottom: 10px;
+        }
+
+        #emoji-btn {
+            padding: 8px;
+            font-size: 1.5em;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #007bff;
+            transition: color 0.3s;
+        }
+
+        #emoji-btn:hover {
+            color: #0056b3;
+        }
+
+        #emoji-picker {
+            display: none;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            position: absolute;
+            bottom: 60px;
+            z-index: 10;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 5px;
+        }
+
+        #emoji-picker button {
+            font-size: 1.5em;
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin: 2px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #fileUploadContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        #fileInputLabel {
+            padding: 8px 16px;
+            font-size: 1em;
+            border: none;
+            border-radius: 4px;
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #fileInputLabel:hover {
+            background-color: #218838;
+        }
+
+        #fileUploadProgress {
+            display: none;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 300px;
+            background: #f4f4f4;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #fileUploadProgress .progress-bar {
+            height: 6px;
+            background-color: #28a745;
+            border-radius: 4px;
+        }
+
+        #fileUploadStatus {
+            text-align: center;
+            padding: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div id="login">
+        <h1>Welcome to Chat</h1>
+        <input type="text" id="username" placeholder="Enter your username"/>
+        <button id="loginBtn">Login</button>
+    </div>
+
+    <div id="chat">
+        <h1>Chat Room</h1>
+        <div id="messages"></div>
+        <div id="typing-indicator"></div>
+        <input type="text" id="message" placeholder="Enter your message"/>
+        <button id="emoji-btn">😊</button>
+        <button id="sendBtn">Send</button>
+        <label for="fileInput" id="fileInputLabel">Select File</label>
+        <input type="file" id="fileInput"/>
+        <div id="fileUploadProgress">
+            <div class="progress-bar"></div>
+            <span id="fileUploadStatus">No file selected</span>
+        </div>
+        <div id="emoji-picker">
+            <button>😀</button>
+            <button>😂</button>
+            <button>😍</button>
+            <button>😎</button>
+            <button>🤔</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const loginBtn = document.getElementById("loginBtn");
+        const chatDiv = document.getElementById("chat");
+        const loginDiv = document.getElementById("login");
+        const sendBtn = document.getElementById("sendBtn");
+        const emojiBtn = document.getElementById("emoji-btn");
+        const emojiPicker = document.getElementById("emoji-picker");
+        const messageInput = document.getElementById("message");
+        const fileInput = document.getElementById("fileInput");
+        const fileUploadProgress = document.getElementById("fileUploadProgress");
+        const fileUploadStatus = document.getElementById("fileUploadStatus");
+        const progressBar = document.querySelector("#fileUploadProgress .progress-bar");
+        const allMessages = document.getElementById("messages");
+        const typingIndicator = document.getElementById("typing-indicator");
+        let username = '';
+
+        loginBtn.addEventListener("click", () => {
+            username = document.getElementById("username").value;
+            if (username.trim() !== '') {
+                socket.emit("set-username", username);
+                loginDiv.style.display = 'none';
+                chatDiv.style.display = 'block';
+            }
+        });
+
+        socket.on("message", (data) => {
+            const p = document.createElement("p");
+            p.className = 'message';
+            if (data.file) {
+                p.innerHTML = `<span class="username">${data.username}:</span> <a href="${data.file.url}" download="${data.file.name}">${data.file.name}</a>`;
+            } else {
+                p.innerHTML = `<span class="username">${data.username}:</span> ${data.message}`;
+            }
+            allMessages.appendChild(p);
+            allMessages.scrollTop = allMessages.scrollHeight;
+        });
+
+        socket.on("typing", (data) => {
+            typingIndicator.innerText = `${data.username} is typing...`;
+            setTimeout(() => typingIndicator.innerText = '', 2000);
+        });
+
+        sendBtn.addEventListener("click", () => {
+            const message = messageInput.value;
+            if (message.trim() !== '') {
+                socket.emit("user-message", { username, message });
+                messageInput.value = '';
+            }
+        });
+
+        messageInput.addEventListener("input", () => {
+            socket.emit("typing", { username });
+        });
+
+        emojiBtn.addEventListener("click", () => {
+            emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
+        });
+
+        emojiPicker.addEventListener("click", (event) => {
+            if (event.target.tagName === 'BUTTON') {
+                const emoji = event.target.innerText;
+                messageInput.value += emoji;
+                emojiPicker.style.display = 'none';
+            }
+        });
+
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append("file", file);
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "/upload", true);
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        progressBar.style.width = `${percentComplete}%`;
+                        fileUploadStatus.innerText = `Uploading: ${percentComplete}%`;
+                    }
+                };
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        socket.emit("user-message", { username, file: response.file });
+                        fileInput.value = '';
+                        progressBar.style.width = '0%';
+                        fileUploadStatus.innerText = 'Upload complete';
+                    } else {
+                        fileUploadStatus.innerText = 'Upload failed';
+                    }
+                };
+                xhr.send(formData);
+                fileUploadProgress.style.display = 'block';
+            }
+        });
+
+    </script>
+</body>
+</html>
